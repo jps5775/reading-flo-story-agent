@@ -1,1 +1,1 @@
-An AI Agent for creating graded stories for ReadinFlo.
+An AI Agent for creating graded stories for ReadingFlo.
