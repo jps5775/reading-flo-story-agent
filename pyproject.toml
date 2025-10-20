@@ -9,4 +9,6 @@ dependencies = [
     "pydantic>=2.12.3",
     "python-dotenv>=1.1.1",
     "requests>=2.31.0",
+    "google-cloud-texttospeech>=2.16.0",
+    "pydub>=0.25.1",
 ]

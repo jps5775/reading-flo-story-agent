@@ -22,6 +22,19 @@ class ImageGenerationResult(BaseModel):
     insertion_point: str
     image_description: str
 
+class StoryContext(BaseModel):
+    story_summary: str
+    key_moments: list[str]
+    cultural_elements: list[str]
+    target_audience: str
+    mood_and_tone: str
+    visual_themes: list[str]
+
+class ArtStyleSelection(BaseModel):
+    selected_style: str
+    style_justification: str
+    visual_consistency_notes: str
+
 class StoryAnalysis(BaseModel):
     story_summary: str
     selected_moments: list[ImagePrompt]
@@ -43,15 +56,26 @@ class AgentIllustrator:
 
     def illustrate_story(self, story_path: str, entire_story_context: EntireStoreContext, story_id: str) -> IllustrationResults:
         """
-        Main method to generate images for a Spanish story
+        Main method to generate images for a Spanish story using three-step process
         """
         print(f"Starting illustration process for story: {story_id}")
         
         # Read story from file
         story_data = self._read_story(story_path)
         
-        # Analyze story and generate prompts
-        analysis = self._analyze_story(story_data, entire_story_context)
+        # Step 1: Analyze story context
+        print("Step 1: Analyzing story context...")
+        story_context = self._analyze_story_context(story_data, entire_story_context)
+        print(f"Extracted {len(story_context.key_moments)} key moments")
+        
+        # Step 2: Select art style
+        print("Step 2: Selecting art style...")
+        art_style = self._select_art_style(story_context)
+        print(f"Selected art style: {art_style.selected_style}")
+        
+        # Step 3: Generate image prompts
+        print("Step 3: Generating image prompts...")
+        analysis = self._generate_image_prompts(story_data, story_context, art_style, entire_story_context)
         print(f"Generated {len(analysis.selected_moments)} image prompts")
         
         # Create images directory
@@ -59,7 +83,7 @@ class AgentIllustrator:
         os.makedirs(images_dir, exist_ok=True)
         
         # Generate images
-        results = self._generate_images(analysis.selected_moments, images_dir, story_id)
+        results = self._generate_images(analysis, images_dir, story_id)
         
         # Create summary
         summary = self._create_summary(analysis, results)
@@ -78,77 +102,166 @@ class AgentIllustrator:
         with open(story_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def _analyze_story(self, story_data: str, entire_story_context: EntireStoreContext) -> StoryAnalysis:
-        """Analyze story and generate image prompts using structured output"""
-        prompt = f"""
-        You are an expert visual storytelling specialist with deep expertise in Spanish language and culture, children's literature illustration, and AI image generation. Your role is to analyze this Spanish story and create compelling, culturally-appropriate image prompts.
-
-        STORY TO ANALYZE:
-        {story_data}
-
-        STORY CONTEXT:
-        Title: {entire_story_context.title}
-        World: {entire_story_context.world.world_description}
-        Cultural Elements: {', '.join(entire_story_context.world.cultural_elements)}
-        Atmosphere: {entire_story_context.world.atmosphere}
-        Characters: {entire_story_context.characters.main_character}
-        Style: {entire_story_context.style.style} - {entire_story_context.style.tone}
-
-        TASK:
-        1. Analyze the complete Spanish story
-        2. Identify 3-5 key narrative moments that would benefit from illustration
-        3. Create detailed image prompts for each moment
-        4. Determine optimal insertion points in the story for each image
-        5. Create descriptive captions for each image
-        6. Ensure cultural authenticity and visual consistency
-
-        REQUIREMENTS FOR IMAGE PROMPTS:
-        - Capture pivotal moments in the story's progression
-        - Include specific visual details: character appearance, setting elements, lighting, mood
-        - Reflect authentic Spanish/Latin American cultural contexts when relevant
-        - Use clear, descriptive English for optimal AI interpretation
-        - Maintain visual consistency across all prompts (character appearance, art style)
-        - Include art style specification (e.g., "watercolor illustration", "children's book style")
-
-        INSERTION POINT REQUIREMENTS:
-        - Identify specific sentences or paragraphs where each image should be placed
-        - Choose moments that enhance comprehension and engagement
-        - Distribute images evenly throughout the story (beginning, middle, end)
-        - Select points that show key actions, settings, or emotional moments
-
-        IMAGE DESCRIPTION REQUIREMENTS:
-        - Write brief, engaging descriptions in English (2-3 sentences)
-        - Focus on what the image shows and why it's important to the story
-        - Use language appropriate for language learners
-        - Highlight cultural elements or key story moments
-
-        PROMPT STRUCTURE:
-        Each prompt should include:
-        - Art style specification
-        - Scene description with specific details
-        - Character details (appearance, clothing, expression, action)
-        - Setting and background elements
-        - Lighting and atmosphere
-        - Mood and emotional tone
-
-        EXAMPLE PROMPT FORMAT:
-        "Watercolor illustration of a young Spanish girl with dark curly hair and a yellow dress, discovering a hidden garden gate covered in purple bougainvillea in a sunny Madrid courtyard. Warm afternoon light, sense of wonder and curiosity, soft pastel colors, whimsical children's book style."
-
-        Generate 3-5 image prompts that tell the story visually when viewed in sequence, with specific insertion points and descriptive captions.
-        """
-
+    def _analyze_story_context(self, story_data: str, entire_story_context: EntireStoreContext) -> StoryContext:
+        """Step 1: Analyze story and extract key context for art style selection"""
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """You are an expert story analyst specializing in Spanish children's literature. Your task is to analyze a story and extract key contextual information that will help determine the most appropriate art style for illustrations.
+
+ANALYSIS TASKS:
+1. Create a concise story summary
+2. Identify 3-5 key narrative moments that would benefit from illustration
+3. Extract cultural elements and themes
+4. Determine target audience and reading level
+5. Analyze mood, tone, and atmosphere
+6. Identify visual themes and motifs
+
+OUTPUT REQUIREMENTS:
+- Story summary: 2-3 sentences capturing the essence
+- Key moments: Brief descriptions of pivotal scenes
+- Cultural elements: Spanish/Latin American cultural aspects
+- Target audience: Age range and reading level
+- Mood and tone: Emotional atmosphere of the story
+- Visual themes: Recurring visual elements or motifs
+
+Focus on providing rich context that will help select the most appropriate art style for this specific story."""},
+                {"role": "user", "content": f"""STORY TO ANALYZE:
+{story_data}
+
+STORY CONTEXT:
+Title: {entire_story_context.title}
+World: {entire_story_context.world.world_description}
+Cultural Elements: {', '.join(entire_story_context.world.cultural_elements)}
+Atmosphere: {entire_story_context.world.atmosphere}
+Characters: {entire_story_context.characters.main_character}
+Style: {entire_story_context.style.style} - {entire_story_context.style.tone}"""}
+            ],
+            temperature=0.6,
+            max_tokens=1500,
+            response_format=StoryContext
+        )
+        return response.choices[0].message.parsed
+
+    def _select_art_style(self, story_context: StoryContext) -> ArtStyleSelection:
+        """Step 2: Select appropriate art style based on story context"""
+        response = self.llm.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": """You are an expert art director specializing in children's book illustration. Your task is to select the most appropriate art style for a Spanish story based on its context.
+
+AVAILABLE ART STYLES:
+- Watercolor illustration (soft, dreamy, artistic)
+- Digital children's book style (clean, colorful, modern)
+- Traditional children's book illustration (classic, warm, detailed)
+- Minimalist illustration (simple, clean, modern)
+- Folk art style (traditional, cultural, handcrafted)
+- Realistic illustration (detailed, lifelike, photographic)
+- Cartoon/animated style (fun, playful, expressive)
+- Mixed media collage (textured, layered, artistic)
+
+SELECTION CRITERIA:
+- Match the story's mood and tone
+- Appeal to the target audience
+- Complement cultural elements
+- Support visual themes
+- Ensure consistency across all illustrations
+
+Provide:
+1. Selected art style with specific details
+2. Clear justification for the choice
+3. Notes on maintaining visual consistency
+
+Choose the style that will best serve the story and its readers."""},
+                {"role": "user", "content": f"""STORY CONTEXT:
+Summary: {story_context.story_summary}
+Key Moments: {', '.join(story_context.key_moments)}
+Cultural Elements: {', '.join(story_context.cultural_elements)}
+Target Audience: {story_context.target_audience}
+Mood and Tone: {story_context.mood_and_tone}
+Visual Themes: {', '.join(story_context.visual_themes)}"""}
+            ],
+            temperature=0.7,
+            max_tokens=800,
+            response_format=ArtStyleSelection
+        )
+        return response.choices[0].message.parsed
+
+    def _generate_image_prompts(self, story_data: str, story_context: StoryContext, art_style: ArtStyleSelection, entire_story_context: EntireStoreContext) -> StoryAnalysis:
+        """Step 3: Generate detailed image prompts using selected art style"""
+        response = self.llm.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": f"""You are an expert visual storytelling specialist with deep expertise in Spanish language and culture, children's literature illustration, and AI image generation. Your role is to create compelling, culturally-appropriate image prompts using the pre-selected art style.
+
+SELECTED ART STYLE: {art_style.selected_style}
+STYLE JUSTIFICATION: {art_style.style_justification}
+VISUAL CONSISTENCY NOTES: {art_style.visual_consistency_notes}
+
+TASK:
+1. Use the key moments from the story analysis
+2. Create detailed image prompts for each moment using the selected art style
+3. Determine optimal insertion points in the story for each image
+4. Create descriptive captions for each image
+5. Ensure cultural authenticity and visual consistency
+
+REQUIREMENTS FOR IMAGE PROMPTS:
+- Use the selected art style consistently across all prompts
+- Capture pivotal moments in the story's progression
+- Include specific visual details: character appearance, setting elements, lighting, mood
+- Reflect authentic Spanish/Latin American cultural contexts when relevant
+- Use clear, descriptive English for optimal AI interpretation
+- Maintain visual consistency across all prompts (character appearance, art style)
+
+INSERTION POINT REQUIREMENTS:
+- Identify specific sentences or paragraphs where each image should be placed
+- Choose moments that enhance comprehension and engagement
+- Distribute images evenly throughout the story (beginning, middle, end)
+- Select points that show key actions, settings, or emotional moments
+
+IMAGE DESCRIPTION REQUIREMENTS:
+- Write brief, engaging descriptions in English (2-3 sentences)
+- Focus on what the image shows and why it's important to the story
+- Use language appropriate for language learners
+- Highlight cultural elements or key story moments
+
+PROMPT STRUCTURE:
+Each prompt should include:
+- The selected art style specification
+- Scene description with specific details
+- Character details (appearance, clothing, expression, action)
+- Setting and background elements
+- Lighting and atmosphere
+- Mood and emotional tone
+
+Generate 3-5 image prompts that tell the story visually when viewed in sequence, with specific insertion points and descriptive captions."""},
+                {"role": "user", "content": f"""STORY TO ANALYZE:
+{story_data}
+
+STORY CONTEXT:
+Summary: {story_context.story_summary}
+Key Moments: {', '.join(story_context.key_moments)}
+Cultural Elements: {', '.join(story_context.cultural_elements)}
+Target Audience: {story_context.target_audience}
+Mood and Tone: {story_context.mood_and_tone}
+Visual Themes: {', '.join(story_context.visual_themes)}
+
+ORIGINAL STORY CONTEXT:
+Title: {entire_story_context.title}
+World: {entire_story_context.world.world_description}
+Characters: {entire_story_context.characters.main_character}
+Style: {entire_story_context.style.style} - {entire_story_context.style.tone}"""}
+            ],
             temperature=0.6,
             max_tokens=2000,
             response_format=StoryAnalysis
         )
-
         return response.choices[0].message.parsed
 
-    def _generate_images(self, image_prompts: list[ImagePrompt], images_dir: str, story_id: str) -> IllustrationResults:
+    def _generate_images(self, analysis: StoryAnalysis, images_dir: str, story_id: str) -> IllustrationResults:
         """Generate images using DALL-E 3 API"""
+        image_prompts: list[ImagePrompt] = analysis.selected_moments
+        art_style: str = analysis.art_style
         image_results = []
         successful_count = 0
         failed_count = 0

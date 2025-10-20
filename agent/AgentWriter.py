@@ -116,24 +116,22 @@ class AgentWriter:
 
     def _create_ideas(self, topic: str) -> StoryIdeas:
         """Generate multiple creative story ideas based on the topic"""
-        prompt = f"""
-        Topic: {topic}
-        
-        You are a creative Spanish story writer. Generate 5 diverse, engaging story ideas that could be developed into educational Spanish stories for language learners.
-        
-        Each idea should:
-        - Be suitable for language learning (clear, relatable situations)
-        - Include cultural elements from Spanish-speaking countries
-        - Have potential for character development and dialogue
-        - Be engaging and age-appropriate
-        - Allow for natural vocabulary and grammar progression
-        
-        Return 5 distinct story concepts, each as a brief 1-2 sentence description.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """You are a creative Spanish story writer. Generate diverse, engaging story ideas that could be developed into educational Spanish stories for language learners.
+
+Each idea should:
+- Be suitable for language learning (clear, relatable situations)
+- Include cultural elements from Spanish-speaking countries
+- Have potential for character development and dialogue
+- Be engaging and age-appropriate
+- Allow for natural vocabulary and grammar progression
+
+Return 5 distinct story concepts, each as a brief 1-2 sentence description."""},
+                {"role": "user", "content": f"Topic: {topic}"}
+            ],
             temperature=0.8,
             max_tokens=500,
             response_format=StoryIdeas
@@ -145,25 +143,21 @@ class AgentWriter:
         """Select the best story idea from the generated options"""
         ideas_text = "\n".join([f"{i+1}. {idea}" for i, idea in enumerate(ideas)])
         
-        prompt = f"""
-        Story Ideas:
-        {ideas_text}
-        
-        You are an expert Spanish language educator. Select the ONE story idea that would be most effective for language learning.
-        
-        Consider:
-        - Educational value (vocabulary, grammar, cultural learning)
-        - Engagement potential for learners
-        - Clarity and simplicity for language acquisition
-        - Cultural authenticity
-        - Potential for natural dialogue and interaction
-        
-        Return only the selected idea text (not the number).
-        """
-        
         response = self.llm.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """You are an expert Spanish language educator. Select the ONE story idea that would be most effective for language learning.
+
+Consider:
+- Educational value (vocabulary, grammar, cultural learning)
+- Engagement potential for learners
+- Clarity and simplicity for language acquisition
+- Cultural authenticity
+- Potential for natural dialogue and interaction
+
+Return only the selected idea text (not the number)."""},
+                {"role": "user", "content": f"Story Ideas:\n{ideas_text}"}
+            ],
             temperature=0.3,
             max_tokens=200
         )
@@ -172,26 +166,23 @@ class AgentWriter:
 
     def _create_story_details(self, selected_idea: str, level: str) -> StoryDetails:
         """Create detailed story framework from the selected idea"""
-        prompt = f"""
-        Selected Story Idea: {selected_idea}
-        Target CEFR Level: {level}
-        
-        You are a Spanish language educator and story developer. Create a detailed framework for this story that will be appropriate for {level} level learners.
-        
-        Develop:
-        - A compelling Spanish title
-        - Clear theme/message
-        - Specific setting (time, place, cultural context)
-        - Main character with clear motivation
-        - Central conflict that drives the story
-        - Satisfying resolution
-        
-        Ensure all elements are appropriate for {level} level vocabulary and grammar complexity.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": f"""You are a Spanish language educator and story developer. Create a detailed framework for stories that will be appropriate for {level} level learners.
+
+Develop:
+- A compelling Spanish title
+- Clear theme/message
+- Specific setting (time, place, cultural context)
+- Main character with clear motivation
+- Central conflict that drives the story
+- Satisfying resolution
+
+Ensure all elements are appropriate for {level} level vocabulary and grammar complexity."""},
+                {"role": "user", "content": f"Selected Story Idea: {selected_idea}"}
+            ],
             temperature=0.6,
             max_tokens=800,
             response_format=StoryDetails
@@ -201,29 +192,27 @@ class AgentWriter:
 
     def _create_story_structure(self, story_details: StoryDetails) -> StoryStructure:
         """Define the narrative structure for the story"""
-        prompt = f"""
-        Story Details:
-        Title: {story_details.title}
-        Theme: {story_details.theme}
-        Setting: {story_details.setting}
-        Main Character: {story_details.main_character}
-        Conflict: {story_details.conflict}
-        Resolution: {story_details.resolution}
-        
-        Create a clear narrative structure for this story. Define 4-6 main sections that will guide the story's progression.
-        
-        Each section should:
-        - Advance the plot logically
-        - Include opportunities for character development
-        - Provide natural language learning moments
-        - Build toward the resolution
-        
-        Return the section titles/descriptions as a list.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """Create a clear narrative structure for stories. Define 4-6 main sections that will guide the story's progression.
+
+Each section should:
+- Advance the plot logically
+- Include opportunities for character development
+- Provide natural language learning moments
+- Build toward the resolution
+
+Return the section titles/descriptions as a list."""},
+                {"role": "user", "content": f"""Story Details:
+Title: {story_details.title}
+Theme: {story_details.theme}
+Setting: {story_details.setting}
+Main Character: {story_details.main_character}
+Conflict: {story_details.conflict}
+Resolution: {story_details.resolution}"""}
+            ],
             temperature=0.5,
             max_tokens=1200,
             response_format=StoryStructure
@@ -233,25 +222,23 @@ class AgentWriter:
 
     def _create_story_world(self, story_details: StoryDetails) -> StoryWorld:
         """Build the cultural and environmental context for the story"""
-        prompt = f"""
-        Story Details:
-        Title: {story_details.title}
-        Setting: {story_details.setting}
-        Theme: {story_details.theme}
-        
-        Create a rich, culturally authentic world for this Spanish story. Focus on elements that will help language learners understand Spanish-speaking cultures.
-        
-        Develop:
-        - Detailed world description (sights, sounds, atmosphere)
-        - Specific cultural elements (foods, traditions, customs, expressions)
-        - Overall atmosphere and mood
-        
-        Ensure cultural elements are authentic and educational for language learners.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """Create a rich, culturally authentic world for Spanish stories. Focus on elements that will help language learners understand Spanish-speaking cultures.
+
+Develop:
+- Detailed world description (sights, sounds, atmosphere)
+- Specific cultural elements (foods, traditions, customs, expressions)
+- Overall atmosphere and mood
+
+Ensure cultural elements are authentic and educational for language learners."""},
+                {"role": "user", "content": f"""Story Details:
+Title: {story_details.title}
+Setting: {story_details.setting}
+Theme: {story_details.theme}"""}
+            ],
             temperature=0.6,
             max_tokens=700,
             response_format=StoryWorld
@@ -261,25 +248,23 @@ class AgentWriter:
 
     def _create_story_characters(self, story_details: StoryDetails) -> StoryCharacters:
         """Develop detailed character profiles and relationships"""
-        prompt = f"""
-        Story Details:
-        Title: {story_details.title}
-        Main Character: {story_details.main_character}
-        Setting: {story_details.setting}
-        
-        Develop rich, authentic characters for this Spanish story. Create characters that will provide good language learning opportunities through dialogue and interaction.
-        
-        Develop:
-        - Detailed main character profile (personality, background, motivations)
-        - 2-3 supporting characters with distinct personalities
-        - Clear relationships and dynamics between characters
-        
-        Focus on creating characters that represent diverse aspects of Spanish-speaking cultures.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """Develop rich, authentic characters for Spanish stories. Create characters that will provide good language learning opportunities through dialogue and interaction.
+
+Develop:
+- Detailed main character profile (personality, background, motivations)
+- 2-3 supporting characters with distinct personalities
+- Clear relationships and dynamics between characters
+
+Focus on creating characters that represent diverse aspects of Spanish-speaking cultures."""},
+                {"role": "user", "content": f"""Story Details:
+Title: {story_details.title}
+Main Character: {story_details.main_character}
+Setting: {story_details.setting}"""}
+            ],
             temperature=0.6,
             max_tokens=800,
             response_format=StoryCharacters
@@ -289,30 +274,27 @@ class AgentWriter:
 
     def _select_writing_style(self, story_details: StoryDetails, level: str) -> WritingStyle:
         """Choose appropriate writing style for the story and level"""
-        prompt = f"""
-        Story Details:
-        Title: {story_details.title}
-        Theme: {story_details.theme}
-        Target CEFR Level: {level}
-        
-        Select the most appropriate writing style for this story that will be effective for {level} level Spanish learners.
-        
-        Choose:
-        - Writing style (narrative, descriptive, dialogue-heavy, etc.)
-        - Tone (warm, adventurous, reflective, humorous, etc.)
-        - Narrative voice (first person, third person, etc.)
-        
-        Consider the CEFR level requirements:
-        - A1/A2: Simple, clear, repetitive structures
-        - B1/B2: More complex but accessible
-        - C1: Sophisticated but not overwhelming
-        
-        Select styles that will enhance language learning while maintaining engagement.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": f"""Select the most appropriate writing style for stories that will be effective for {level} level Spanish learners.
+
+Choose:
+- Writing style (narrative, descriptive, dialogue-heavy, etc.)
+- Tone (warm, adventurous, reflective, humorous, etc.)
+- Narrative voice (first person, third person, etc.)
+
+Consider the CEFR level requirements:
+- A1/A2: Simple, clear, repetitive structures
+- B1/B2: More complex but accessible
+- C1: Sophisticated but not overwhelming
+
+Select styles that will enhance language learning while maintaining engagement."""},
+                {"role": "user", "content": f"""Story Details:
+Title: {story_details.title}
+Theme: {story_details.theme}"""}
+            ],
             temperature=0.4,
             max_tokens=400,
             response_format=WritingStyle
@@ -324,28 +306,25 @@ class AgentWriter:
         """Create specific plot points that drive the story forward"""
         structure_text = "\n".join([f"- {section}" for section in structure.structure])
         
-        prompt = f"""
-        Story Details:
-        Title: {story_details.title}
-        Conflict: {story_details.conflict}
-        Resolution: {story_details.resolution}
-        
-        Story Structure:
-        {structure_text}
-        
-        Create specific plot points that will drive this story forward. Each plot point should:
-        - Advance the narrative toward the resolution
-        - Include opportunities for character development
-        - Provide natural language learning moments
-        - Build tension and engagement
-        - Include dialogue opportunities where appropriate
-        
-        Create 6-8 specific plot points that will guide the story writing.
-        """
-        
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": """Create specific plot points that will drive stories forward. Each plot point should:
+- Advance the narrative toward the resolution
+- Include opportunities for character development
+- Provide natural language learning moments
+- Build tension and engagement
+- Include dialogue opportunities where appropriate
+
+Create 6-8 specific plot points that will guide the story writing."""},
+                {"role": "user", "content": f"""Story Details:
+Title: {story_details.title}
+Conflict: {story_details.conflict}
+Resolution: {story_details.resolution}
+
+Story Structure:
+{structure_text}"""}
+            ],
             temperature=0.6,
             max_tokens=800,
             response_format=PlotPoints
@@ -359,47 +338,42 @@ class AgentWriter:
         """Create a detailed story outline incorporating all elements"""
         plot_text = "\n".join([f"- {point}" for point in plot_points.plot_points])
         
-        prompt = f"""
-        Story Details:
-        Title: {story_details.title}
-        Theme: {story_details.theme}
-        Setting: {story_details.setting}
-        Conflict: {story_details.conflict}
-        Resolution: {story_details.resolution}
-        
-        Plot Points:
-        {plot_text}
-        
-        World Elements:
-        - Description: {world.world_description}
-        - Cultural Elements: {', '.join(world.cultural_elements)}
-        - Atmosphere: {world.atmosphere}
-        
-        Characters:
-        - Main: {characters.main_character}
-        - Supporting: {', '.join(characters.supporting_characters)}
-        - Relationships: {characters.character_relationships}
-        
-        Writing Style:
-        - Style: {style.style}
-        - Tone: {style.tone}
-        - Voice: {style.narrative_voice}
-        
-        Target CEFR Level: {level}
-        
-        Create a detailed story outline that incorporates all these elements. The outline should:
-        - Follow the plot points in logical sequence
-        - Include specific scenes and dialogue opportunities
-        - Incorporate cultural elements naturally
-        - Ensure appropriate language complexity for {level} level
-        - Provide clear guidance for writing each section
-        
-        Make the outline detailed enough to guide the actual story writing.
-        """
-        
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": f"""Create a detailed story outline that incorporates all story elements. The outline should:
+- Follow the plot points in logical sequence
+- Include specific scenes and dialogue opportunities
+- Incorporate cultural elements naturally
+- Ensure appropriate language complexity for {level} level
+- Provide clear guidance for writing each section
+
+Make the outline detailed enough to guide the actual story writing."""},
+                {"role": "user", "content": f"""Story Details:
+Title: {story_details.title}
+Theme: {story_details.theme}
+Setting: {story_details.setting}
+Conflict: {story_details.conflict}
+Resolution: {story_details.resolution}
+
+Plot Points:
+{plot_text}
+
+World Elements:
+- Description: {world.world_description}
+- Cultural Elements: {', '.join(world.cultural_elements)}
+- Atmosphere: {world.atmosphere}
+
+Characters:
+- Main: {characters.main_character}
+- Supporting: {', '.join(characters.supporting_characters)}
+- Relationships: {characters.character_relationships}
+
+Writing Style:
+- Style: {style.style}
+- Tone: {style.tone}
+- Voice: {style.narrative_voice}"""}
+            ],
             temperature=0.5,
             max_tokens=2000,
             response_format=StoryOutline
@@ -409,35 +383,30 @@ class AgentWriter:
 
     def _write_first_draft(self, outline: StoryOutline, level: str) -> StoryDraft:
         """Write the complete first draft of the story"""
-        prompt = f"""
-        Story Outline:
-        {outline.outline}
-        
-        Target CEFR Level: {level}
-        
-        You are an expert Spanish language educator and creative writer. Write a complete, engaging Spanish story based on this outline.
-        
-        Requirements:
-        - Write entirely in Spanish
-        - Match the exact CEFR level specified ({level})
-        - Follow the outline structure precisely
-        - Include natural dialogue and cultural elements
-        - Use appropriate vocabulary and grammar for the level
-        - Create an engaging, educational story
-        - Word count: A1: 300-400, A2: 400-500, B1: 500-600, B2: 600-700, C1: 700-800
-        - DO NOT include section headers, chapter numbers, or structural markers (like "#### I. Introducción")
-        - Write as a continuous narrative without section headers or chapter numbers
-        - Format dialogue on separate lines with proper quotation marks
-        
-        CEFR Level Guidelines:
-        {self._get_cefr_guidelines(level)}
-        
-        Write a complete story that is both entertaining and pedagogically valuable for Spanish language learners.
-        """
         
         response = self.llm.chat.completions.parse(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": f"""You are an expert Spanish language educator and creative writer. Write complete, engaging Spanish stories based on outlines.
+
+Requirements:
+- Write entirely in Spanish
+- Match the exact CEFR level specified ({level})
+- Follow the outline structure precisely
+- Include natural dialogue and cultural elements
+- Use appropriate vocabulary and grammar for the level
+- Create an engaging, educational story
+- Word count: A1: 300-400, A2: 400-500, B1: 500-600, B2: 600-700, C1: 700-800
+- DO NOT include section headers, chapter numbers, or structural markers (like "#### I. Introducción")
+- Write as a continuous narrative without section headers or chapter numbers
+- Format dialogue on separate lines with proper quotation marks
+
+CEFR Level Guidelines:
+{self._get_cefr_guidelines(level)}
+
+Write a complete story that is both entertaining and pedagogically valuable for Spanish language learners."""},
+                {"role": "user", "content": f"Story Outline:\n{outline.outline}"}
+            ],
             temperature=0.7,
             max_tokens=2000,
             response_format=StoryDraft
