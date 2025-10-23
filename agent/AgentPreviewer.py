@@ -1,67 +1,75 @@
 import os
 import json
-from typing import Optional, List
-from agent.AgentIllustrator import IllustrationResults
+from typing import Optional
 from agent.AgentAudioMaker import AudioGenerationResult
+
 
 class AgentPreviewer:
     def __init__(self):
         pass
 
-    def create_html_preview(self, title: str, story_path: str, level: str, story_id: str, illustration_results: Optional[IllustrationResults] = None, audio_result: Optional[AudioGenerationResult] = None) -> str:
+    def create_html_preview(
+        self,
+        title: str,
+        story_path: str,
+        level: str,
+        story_id: str,
+        audio_result: Optional[AudioGenerationResult] = None,
+    ) -> str:
         """
         Create an HTML preview of the story with optional illustrations and audio
         """
         # Read story from file
         with open(story_path, "r", encoding="utf-8") as f:
             story = f.read()
-        
-        # Split story into paragraphs
+
+        # Split story into paragraphs and process image placeholders
         paragraphs = [p.strip() for p in story.strip().split("\n\n") if p.strip()]
-        
+
         # Create paragraph HTML with dialogue, images, and word highlighting
         story_paragraphs = ""
 
-        if illustration_results:
-            total_paragraphs = len(paragraphs)
-            successful_images = [r for r in illustration_results.image_results if r.status == "success"]
-            if successful_images:
-                insertion_interval = max(1, total_paragraphs // len(successful_images))
-                insertion_points = [i * insertion_interval for i in range(1, len(successful_images) + 1)]
-            else:
-                insertion_points = []
-        else:
-            insertion_points = []
-            successful_images = []
+        for raw_paragraph in paragraphs:
+            # Check if this paragraph contains an image placeholder
+            if raw_paragraph.startswith("[IMAGE:"):
+                # Extract image path and description from placeholder
+                content = raw_paragraph.replace("[IMAGE:", "").replace("]", "").strip()
 
-        image_index = 0
+                # Check if description is included
+                if " | DESCRIPTION: " in content:
+                    image_path, image_description = content.split(" | DESCRIPTION: ", 1)
+                else:
+                    image_path = content
+                    image_description = "Story illustration"
 
-        for i, raw_paragraph in enumerate(paragraphs):
-            if raw_paragraph.startswith('"') or '"' in raw_paragraph:
+                # Convert to relative path for HTML
+                relative_image_path = image_path.replace(
+                    "agent-generated-stories/" + story_id + "/", ""
+                )
+                story_paragraphs += f'''
+        <div class="story-image">
+            <img src="{relative_image_path}" alt="{image_description}" class="img-fluid rounded">
+            <div class="image-caption">{image_description}</div>
+        </div>
+        '''
+            elif raw_paragraph.startswith('"') or '"' in raw_paragraph:
+                # Handle dialogue
                 parts = raw_paragraph.split('"')
                 formatted_parts = []
                 for j, part in enumerate(parts):
                     if part.strip():
                         highlighted = self._process_paragraph_for_highlighting(part)
                         if j % 2 == 1:
-                            formatted_parts.append(f'<span class="dialogue">"{highlighted}"</span>')
+                            formatted_parts.append(
+                                f'<span class="dialogue">"{highlighted}"</span>'
+                            )
                         else:
                             formatted_parts.append(highlighted)
-                story_paragraphs += f'<p>{"".join(formatted_parts)}</p>\n'
+                story_paragraphs += f"<p>{''.join(formatted_parts)}</p>\n"
             else:
+                # Regular paragraph
                 highlighted = self._process_paragraph_for_highlighting(raw_paragraph)
-                story_paragraphs += f'<p>{highlighted}</p>\n'
-
-            if i + 1 in insertion_points and image_index < len(successful_images):
-                result = successful_images[image_index]
-                image_path = result.file_path.replace("agent-generated-stories/" + story_id + "/", "")
-                story_paragraphs += f'''
-        <div class="story-image">
-            <img src="{image_path}" alt="Story illustration {result.image_number}" class="img-fluid rounded">
-            <p class="image-caption">{result.image_description}</p>
-        </div>
-        '''
-                image_index += 1
+                story_paragraphs += f"<p>{highlighted}</p>\n"
 
         # Create audio player HTML if audio is available
         audio_player_html = ""
@@ -92,7 +100,7 @@ class AgentPreviewer:
                     </div>
                     
                     <audio controls class="w-100" preload="metadata" id="story-audio">
-                        <source src="{first_voice.audio_file_path.replace('agent-generated-stories/' + story_id + '/', '')}" type="audio/mpeg">
+                        <source src="{first_voice.audio_file_path.replace("agent-generated-stories/" + story_id + "/", "")}" type="audio/mpeg">
                         Tu navegador no soporta el elemento de audio.
                     </audio>
                     
@@ -211,13 +219,26 @@ class AgentPreviewer:
             const audio = document.getElementById('story-audio');
             const voiceSelect = document.getElementById('voice-select');
             
-            const voiceData = {json.dumps([{
-                'audio_path': vr.audio_file_path.replace('agent-generated-stories/' + story_id + '/', ''),
-                'timing_path': vr.timing_file_path.replace('agent-generated-stories/' + story_id + '/', ''),
-                'language_code': vr.language_code,
-                'gender': vr.gender,
-                'voice_name': vr.voice_name
-            } for vr in audio_result.voice_results]) if audio_result and audio_result.success else '[]'};
+            const voiceData = {
+            json.dumps(
+                [
+                    {
+                        "audio_path": vr.audio_file_path.replace(
+                            "agent-generated-stories/" + story_id + "/", ""
+                        ),
+                        "timing_path": vr.timing_file_path.replace(
+                            "agent-generated-stories/" + story_id + "/", ""
+                        ),
+                        "language_code": vr.language_code,
+                        "gender": vr.gender,
+                        "voice_name": vr.voice_name,
+                    }
+                    for vr in audio_result.voice_results
+                ]
+            )
+            if audio_result and audio_result.success
+            else "[]"
+        };
             
             function loadTimingData(voiceIndex) {{
                 if (voiceData[voiceIndex]) {{
@@ -295,25 +316,25 @@ class AgentPreviewer:
         import re
         import html
 
-        tokens = re.findall(r'\w+|[^\w\s]|\s+', paragraph, re.UNICODE)
+        tokens = re.findall(r"\w+|[^\w\s]|\s+", paragraph, re.UNICODE)
         processed_tokens = []
 
         for token in tokens:
             if token.isspace():
                 processed_tokens.append(token)
-            elif re.match(r'\w+', token):
+            elif re.match(r"\w+", token):
                 escaped = html.escape(token)
                 span = f'<span class="word" data-word="{escaped}">{escaped}</span>'
                 processed_tokens.append(span)
             else:
                 processed_tokens.append(html.escape(token))
 
-        return ''.join(processed_tokens)
+        return "".join(processed_tokens)
 
     def _load_timing_data(self, timing_file_path: str) -> list:
         """Load timing data from JSON file"""
         try:
-            with open(timing_file_path, 'r', encoding='utf-8') as f:
+            with open(timing_file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             print(f"Error loading timing data: {e}")
