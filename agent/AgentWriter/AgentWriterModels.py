@@ -158,3 +158,24 @@ class FullStoryContext(BaseModel):
 
 class Chunk(BaseModel):
     data: str
+
+
+# Plot Points Structure:
+# --------------------------------
+# Main Plot Point: {main_plot_point}
+# Sub Plot Points:
+# -{sub_plot_point_1}:
+#     Deep Sub Plot Points:
+#         -{deep_sub_plot_point_1}:
+#         -{deep_sub_plot_point_2}:
+#         -{deep_sub_plot_point_N}:
+# -{sub_plot_point_2}:
+#     Deep Sub Plot Points:
+#         -{deep_sub_plot_point_1}:
+#         -{deep_sub_plot_point_2}:
+#         -{deep_sub_plot_point_N}:
+# -{sub_plot_point_N}:
+#     Deep Sub Plot Points:
+#         -{deep_sub_plot_point_1}:
+#         -{deep_sub_plot_point_2}:
+#         -{deep_sub_plot_point_N}:

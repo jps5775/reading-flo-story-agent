@@ -15,9 +15,18 @@ class AgentPreviewer:
         level: str,
         story_id: str,
         audio_result: Optional[AudioGenerationResult] = None,
+        include_illustrations: bool = True,
     ) -> str:
         """
         Create an HTML preview of the story with optional illustrations and audio
+
+        Args:
+            title: Story title
+            story_path: Path to the story file
+            level: Reading level
+            story_id: Unique story identifier
+            audio_result: Optional audio generation result
+            include_illustrations: Whether to include image illustrations (default: True)
         """
         # Read story from file
         with open(story_path, "r", encoding="utf-8") as f:
@@ -28,30 +37,72 @@ class AgentPreviewer:
 
         # Create paragraph HTML with dialogue, images, and word highlighting
         story_paragraphs = ""
+        skip_next_paragraph = False
 
-        for raw_paragraph in paragraphs:
+        for i, raw_paragraph in enumerate(paragraphs):
+            # Skip this paragraph if it's an image description following an image placeholder
+            if skip_next_paragraph:
+                skip_next_paragraph = False
+                continue
+
             # Check if this paragraph contains an image placeholder
             if raw_paragraph.startswith("[IMAGE:"):
-                # Extract image path and description from placeholder
-                content = raw_paragraph.replace("[IMAGE:", "").replace("]", "").strip()
+                if include_illustrations:
+                    # Extract image path and description from placeholder
+                    content = (
+                        raw_paragraph.replace("[IMAGE:", "").replace("]", "").strip()
+                    )
 
-                # Check if description is included
-                if " | DESCRIPTION: " in content:
-                    image_path, image_description = content.split(" | DESCRIPTION: ", 1)
-                else:
-                    image_path = content
-                    image_description = "Story illustration"
+                    # Check if description is included
+                    if " | DESCRIPTION: " in content:
+                        image_path, image_description = content.split(
+                            " | DESCRIPTION: ", 1
+                        )
+                    else:
+                        image_path = content
+                        image_description = "Story illustration"
 
-                # Convert to relative path for HTML
-                relative_image_path = image_path.replace(
-                    "agent-generated-stories/" + story_id + "/", ""
-                )
-                story_paragraphs += f'''
+                    # Convert to relative path for HTML
+                    relative_image_path = image_path.replace(
+                        "agent-generated-stories/" + story_id + "/", ""
+                    )
+                    story_paragraphs += f'''
         <div class="story-image">
             <img src="{relative_image_path}" alt="{image_description}" class="img-fluid rounded">
             <div class="image-caption">{image_description}</div>
         </div>
         '''
+                else:
+                    # If illustrations are disabled, skip the image placeholder
+                    # and mark the next paragraph to be skipped (likely an image description)
+                    if i + 1 < len(paragraphs):
+                        next_paragraph = paragraphs[i + 1]
+                        # Check if next paragraph looks like an image description (starts with character name or descriptive text)
+                        if (
+                            next_paragraph
+                            and not next_paragraph.startswith('"')
+                            and not next_paragraph.startswith("[IMAGE:")
+                            and (
+                                next_paragraph.startswith(
+                                    ("Lucía", "María", "Javier", "Miguel", "Zylo")
+                                )
+                                or any(
+                                    word in next_paragraph.lower()
+                                    for word in [
+                                        "dress",
+                                        "café",
+                                        "theater",
+                                        "stage",
+                                        "costume",
+                                        "smiling",
+                                        "appearing",
+                                        "vibrant",
+                                        "atmosphere",
+                                    ]
+                                )
+                            )
+                        ):
+                            skip_next_paragraph = True
             elif raw_paragraph.startswith('"') or '"' in raw_paragraph:
                 # Handle dialogue
                 parts = raw_paragraph.split('"')

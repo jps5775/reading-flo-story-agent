@@ -26,7 +26,7 @@ def load_full_story_context(story_id: str) -> FullStoryContext:
 class RunStep(Enum):
     AgentWriter = True
     AgentReviewer = True
-    AgentIllustrator = True
+    AgentIllustrator = False
     AgentAudioMaker = True
     AgentPreviewer = True
     SaveFullStoryContext = True
@@ -102,6 +102,7 @@ def main():
             full_story_context.level,
             story_id,
             audio_result,
+            include_illustrations=False,
         )
         logger.end_agent()
         logger.log_html_preview(html_path)
